@@ -1,5 +1,7 @@
+
 import 'package:flutter/material.dart';
 import 'splash_screen.dart';
+
 
 void main() {
   runApp(const MyApp());
@@ -11,7 +13,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Calculadora de Notas',
+      title: 'Calculadora Académica',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -21,7 +23,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const SplashScreen(),
+     home: const SplashScreen(), 
     );
   }
 }
@@ -34,10 +36,9 @@ class PromedioPage extends StatefulWidget {
 }
 
 class _PromedioPageState extends State<PromedioPage> {
-  // Estado para colapsar/expandir pesos
   bool _pesosExpandidos = false;
 
-  // --- CONTROLADORES DE NOTAS ---
+  // --- NOTAS ---
   final _u1Es = TextEditingController();
   final _u1Ep = TextEditingController();
   final _u2Es = TextEditingController();
@@ -46,7 +47,7 @@ class _PromedioPageState extends State<PromedioPage> {
   final _u3Ep = TextEditingController();
   final _ecg = TextEditingController();
 
-  // --- CONTROLADORES DE PESOS ---
+  // --- PESOS (Valores por defecto de tu imagen) ---
   final _wU1Es = TextEditingController(text: "5");
   final _wU1Ep = TextEditingController(text: "15");
   final _wU2Es = TextEditingController(text: "5");
@@ -57,12 +58,16 @@ class _PromedioPageState extends State<PromedioPage> {
   final _wTotalEs = TextEditingController(text: "20");
   final _wTotalEp = TextEditingController(text: "70");
   final _wTotalEcg = TextEditingController(text: "10");
+  
+  final _notaMinima = TextEditingController(text: "13"); // Configurado a 13
 
   double? _notaFinal;
   String _mensaje = "";
+  Color _colorEstado = Colors.red;
 
   void _calcular() {
     setState(() {
+      // Captura de notas
       double nU1es = double.tryParse(_u1Es.text) ?? 0;
       double nU1ep = double.tryParse(_u1Ep.text) ?? 0;
       double nU2es = double.tryParse(_u2Es.text) ?? 0;
@@ -71,6 +76,7 @@ class _PromedioPageState extends State<PromedioPage> {
       double nU3ep = double.tryParse(_u3Ep.text) ?? 0;
       double nEcg = double.tryParse(_ecg.text) ?? 0;
 
+      // Captura de pesos
       double wU1es = double.tryParse(_wU1Es.text) ?? 0;
       double wU1ep = double.tryParse(_wU1Ep.text) ?? 0;
       double wU2es = double.tryParse(_wU2Es.text) ?? 0;
@@ -78,22 +84,41 @@ class _PromedioPageState extends State<PromedioPage> {
       double wU3es = double.tryParse(_wU3Es.text) ?? 0;
       double wU3ep = double.tryParse(_wU3Ep.text) ?? 0;
       
-      double wT_Es = (double.tryParse(_wTotalEs.text) ?? 0) / 100;
-      double wT_Ep = (double.tryParse(_wTotalEp.text) ?? 0) / 100;
-      double wT_Ecg = (double.tryParse(_wTotalEcg.text) ?? 0) / 100;
+      double wT_Es = (double.tryParse(_wTotalEs.text) ?? 20) / 100;
+      double wT_Ep = (double.tryParse(_wTotalEp.text) ?? 70) / 100;
+      double wT_Ecg = (double.tryParse(_wTotalEcg.text) ?? 10) / 100;
+      double minAprobacion = double.tryParse(_notaMinima.text) ?? 13.0;
 
-      double sumaPesosEs = wU1es + wU2es + wU3es;
+      // 1. Calcular Promedio Ponderado de Productos (EP)
       double sumaPesosEp = wU1ep + wU2ep + wU3ep;
+      double promedioEP = sumaPesosEp > 0 
+          ? (nU1ep * wU1ep + nU2ep * wU2ep + nU3ep * wU3ep) / sumaPesosEp 
+          : 0;
 
-      double promedioES = sumaPesosEs > 0 ? (nU1es * wU1es + nU2es * wU2es + nU3es * wU3es) / sumaPesosEs : 0;
-      double promedioEP = sumaPesosEp > 0 ? (nU1ep * wU1ep + nU2ep * wU2ep + nU3ep * wU3ep) / sumaPesosEp : 0;
+      // 2. Calcular Promedio Ponderado Formativo (ES)
+      double sumaPesosEs = wU1es + wU2es + wU3es;
+      double promedioES = sumaPesosEs > 0 
+          ? (nU1es * wU1es + nU2es * wU2es + nU3es * wU3es) / sumaPesosEs 
+          : 0;
 
+      // --- LÓGICA DE NEGOCIO ---
       if (promedioEP < 12.50) {
+        // REGLA (**): Si EP < 12.5, la nota final es directamente el promedio de EP
         _notaFinal = promedioEP;
-        _mensaje = "Desaprobado: EP < 12.5";
+        _mensaje = "Desaprobado (EP < 12.5)";
+        _colorEstado = Colors.red.shade900;
       } else {
+        // REGLA (*): Si EP >= 12.5, se aplica la fórmula ponderada global
         _notaFinal = (promedioES * wT_Es) + (promedioEP * wT_Ep) + (nEcg * wT_Ecg);
-        _mensaje = _notaFinal! >= 10.5 ? "¡Aprobado!" : "Desaprobado";
+        
+        // Verificar si alcanza la nota mínima de 13
+        if (_notaFinal! >= minAprobacion) {
+          _mensaje = "¡Aprobado!";
+          _colorEstado = const Color(0xFF023052); // Azul oscuro
+        } else {
+          _mensaje = "Desaprobado (Nota < $minAprobacion)";
+          _colorEstado = Colors.red.shade900;
+        }
       }
     });
   }
@@ -104,6 +129,7 @@ class _PromedioPageState extends State<PromedioPage> {
         c.clear();
       }
       _notaFinal = null;
+      _mensaje = "";
     });
   }
 
@@ -120,16 +146,16 @@ class _PromedioPageState extends State<PromedioPage> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // --- SECCIÓN DE PESOS COLAPSABLE ---
+            // CONFIGURACIÓN DE PESOS (COLAPSABLE)
             Card(
               elevation: 0,
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withOpacity(0.9),
               child: Column(
                 children: [
                   ListTile(
                     onTap: () => setState(() => _pesosExpandidos = !_pesosExpandidos),
-                    title: const Text("CONFIGURACIÓN DE PESOS (%)", 
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF023052))),
+                    title: const Text("CONFIGURACIÓN DE PESOS Y MÍNIMOS", 
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF023052))),
                     trailing: Icon(_pesosExpandidos ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
                     dense: true,
                   ),
@@ -150,7 +176,9 @@ class _PromedioPageState extends State<PromedioPage> {
                               const SizedBox(width: 5),
                               Expanded(child: _buildSmallInput(_wTotalEcg, "T. ECG %")),
                             ],
-                          )
+                          ),
+                          const SizedBox(height: 10),
+                          _buildSmallInput(_notaMinima, "NOTA MÍNIMA PARA APROBAR"),
                         ],
                       ),
                     ),
@@ -160,7 +188,6 @@ class _PromedioPageState extends State<PromedioPage> {
             
             const SizedBox(height: 10),
 
-            // --- SECCIÓN DE NOTAS ---
             _buildUnidadCard("UNIDAD 1", _u1Es, "Nota ES", _u1Ep, "Nota EP"),
             _buildUnidadCard("UNIDAD 2", _u2Es, "Nota ES", _u2Ep, "Nota EP"),
             _buildUnidadCard("UNIDAD 3", _u3Es, "Nota ES", _u3Ep, "Nota EP"),
@@ -220,8 +247,8 @@ class _PromedioPageState extends State<PromedioPage> {
                   children: [
                     const Text("PROMEDIO FINAL", style: TextStyle(fontWeight: FontWeight.bold)),
                     Text(_notaFinal!.toStringAsFixed(2), 
-                      style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Color(0xFF023052))),
-                    Text(_mensaje, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      style: TextStyle(fontSize: 52, fontWeight: FontWeight.bold, color: _colorEstado)),
+                    Text(_mensaje, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _colorEstado)),
                   ],
                 ),
               )
